@@ -5,16 +5,26 @@ from discord.ext import tasks, commands
 import asyncio
 import random
 import json
+import dropbox
 import datetime
 import os
+import platform
 import sys
 import inspect
 from extension import tunabot_embed, tunabot_background, tunabot_webhook, tunabot_utils
 
 # 봇 실행 전에, 데이터를 불러옵니다.
 
-with open('C:/tunabot_token.txt') as token_file: # 토큰 불러옴
-    token = token_file.readline()
+if platform.system() == 'Windows':
+    with open('C:/tunabot/tunabot_token.txt') as token_file: # 봇 토큰 불러옴
+        token = token_file.readline()
+    with open('C:/tunabot/tunabot_dbx.txt') as dbx_file: # 드롭박스 토큰 불러옴
+        dbx = dropbox.Dropbox(dbx_file.readline())
+elif platform.system() == 'Linux':
+    with open('$HOME/tunabot/tunabot_token.txt') as token_file:
+        token = token_file.readline()
+    with open('$HOME/tunabot/tunabot_dbx.txt') as dbx_file:
+        dbx = dropbox.Dropbox(dbx_file.readline())
 with open('config.json') as config_file: # 설정 파일 불러옴
     config = json.load(config_file)
 with open('balance.json') as balance_file: # 레벨업 조건 파일 불러옴
@@ -65,15 +75,15 @@ async def on_message(message):
             embed.add_field(name="사용약관", value="Team Wonder. 의 모든 봇을 사용하는 것은 [원더봇 약관](https://wonderbot.xyz/tos) 에 동의한 것으로 간주됩니다.\n또한 다음약관은 추가됩니다.\n- 봇에서 발생하는 모든 분쟁에 팀은 책임지지 않습니다.", inline=False)
             embed.add_field(name="개인정보취급방침", value="◆ 수집하는 개인정보 항목\n봇의 명령어 이용, 버그 악용방지, 테러 방지 등등을 위해 아래와 같은 개인정보를 수집하고 있습니다.\n수집항목 : 유저 : 닉네임, 아이디, 태그, 접두사로 시작하는 모든 메세지 데이터\n서버 : Discord API 가 제공하는 모든 서버 데이터\n○ 개인정보 수집방법 : 유저 제공, Discord API\n◆ 개인정보의 수집 및 이용목적\n해당 봇은 다음과 같은 목적으로 개인정보를 사용합니다.\n○ 과도한 명령어 도배 방지 및 테러방지\n○ 빠르고 쉽게 서비스 제공\n◆ 개인정보의 보유 및 이용기간\n○ 개인정보는 유저의 파기 요청 전 또는 서비스 종료 전까지 안전하게 보관됩니다.\n◆ 개인정보 제공\n해당 봇은 절대로 제 3자에게 개인정보를 제공하지 않습니다. 하지만 아래의 경우는 예외로 합니다\n○ 제휴 이벤트로 개인정보 제공이 불가피한 경우", inline=False)
             embed.add_field(name="해당 약관들에 동의하셔야 서비스를 이용하실 수 있습니다.", value="동의하시려면 `동의`라고 메세지를 전송해주세요.\n다시 검토하시려면 10초간 기다려주세요.", inline=False)
-            await message.channel.send(embed=embed)
+            await message.channel.send(embed=embed) # 약관 메시지 전송
             def check_accept(m):
                 return m.author == message.author and m.content == "동의"
             try:
-                m = await app.wait_for('message', timeout=10.0, check=check_accept)
+                m = await app.wait_for('message', timeout=10.0, check=check_accept) # 타임아웃 10초 동안 약관 수락 체크
             except asyncio.TimeoutError:
                 embed = tunabot_embed.embed_text(message, ":warning: **경고**", "시간이 초과되었습니다.", color['yellow'], message.author)
                 await message.channel.send(embed=embed)
-            else:
+            else: # 10초 이내에 약관을 수락한 경우 해당 유저의 유저데이터를 새로 생성합니다.
                 today = datetime.date.today()
                 userData[str(message.author.id)] = {"money" : 0,"rank" : "","lang" : "kor","level" : 0,"point" : 0,"signDate":today.strftime("%Y-%m-%d"),"membership":"Free"}
                 with open('userData.json', 'w') as userData_file:
@@ -84,12 +94,12 @@ async def on_message(message):
             embed = tunabot_embed.embed_text(message, ":warning: **경고**", "이미 등록된 계정입니다.", color['yellow'], message.author)
             await message.channel.send(embed=embed)
 
-    elif message.content.startswith(prefix) and not str(message.author.id) in userData.keys():
+    elif message.content.startswith(prefix) and not str(message.author.id) in userData.keys(): # 등록되지 않은 유저가 명령을 발신한 경우
         embed = tunabot_embed.embed_text(message, ":warning: **경고**", f"아직 등록되지 않았습니다.\n `{prefix}동의` 명령어로 등록할 수 있습니다.", color['yellow'], message.author)
         await message.channel.send(embed=embed)
         return
 
-    elif message.content.startswith(prefix+"핑"):
+    elif message.content.startswith(prefix+"핑"): # 현재 지연시간 확인
         ping = int(app.latency*1000)
         if  ping <= 100:
             status = "양호"
@@ -106,10 +116,10 @@ async def on_message(message):
         embed = tunabot_embed.embed_text(message, f":ping_pong: **{status}**", (f"**봇 지연시간** {str(ping)}ms"), pcolor, message.author)
         await message.channel.send(embed=embed)
 
-    elif message.content.startswith(prefix+"백업"):
+    elif message.content.startswith(prefix+"백업"): # 봇 데이터 백업
         if "Master" in userData[str(message.author.id)]['rank']:
             available = []
-            for x in os.listdir():
+            for x in os.listdir(): # 백업 가능한 .json 파일 확인
                 if x.endswith(".json"):
                     available.append(x)
             backups = ""
