@@ -1,25 +1,30 @@
+# -*-coding: utf-8-*-
+
 import discord
 from discord.ext import tasks, commands
 import asyncio
 import random
 import json
 import datetime
-import dropbox
 import os
 import sys
 import inspect
 from extension import tunabot_embed, tunabot_background, tunabot_webhook, tunabot_utils
 
-with open('config.json') as config_file:    
+# 봇 실행 전에, 데이터를 불러옵니다.
+
+with open('C:/tunabot_token.txt') as token_file: # 토큰 불러옴
+    token = token_file.readline()
+with open('config.json') as config_file: # 설정 파일 불러옴
     config = json.load(config_file)
-with open('balance.json') as balance_file:    
+with open('balance.json') as balance_file: # 레벨업 조건 파일 불러옴
     balance = json.load(balance_file)
-with open('userData.json') as userData_file:    
+with open('userData.json') as userData_file: # 유저 데이터 파일 불러옴
     userData = json.load(userData_file)
 
 app = commands.Bot(command_prefix="")
-prefix = config['prefix']
-dbx = dropbox.Dropbox(config['dbx'])
+
+prefix = config['prefix'] # 설정 파일에서 명령어 접두사를 가져옵니다.
 al = tunabot_utils.aliases
 args = tunabot_utils.arguments
 color = {'main':0x5b50fa, 'yellow':0xffbb00, 'red':0xf04747, 'green':0x43b581, 'orange':0xf26522}
@@ -31,29 +36,30 @@ async def on_ready():
     print("Ready: {} : {}".format(app.user.name, app.user.id))
     tunabot_webhook.app_ready()
 
+# 1초 간격으로 데이터 업데이트
 @tasks.loop(seconds=1)
 async def dataLoad():
     global config
     global userData
-    with open('config.json') as config_file:    
+    with open('config.json') as config_file:
         config = json.load(config_file)
-    with open('balance.json') as balance_file:    
+    with open('balance.json') as balance_file:
         balance = json.load(balance_file)
     with open('userData.json') as userData_file:
         userData = json.load(userData_file)
 
 @app.event
 async def on_message(message):
-    if message.author.bot or message.author == app.user:
+    if message.author.bot or message.author == app.user: # 발신자가 봇이거나 자기 자신인 경우 이벤트 무시
         return
-    
-    elif message.channel.type == discord.ChannelType.group or message.channel.type == discord.ChannelType.private:
+
+    elif message.channel.type == discord.ChannelType.group or message.channel.type == discord.ChannelType.private: # 채널 타입이 그룹이거나 개인메시지인 경우
         embed = tunabot_embed.embed_text(message, ":warning: **경고**", "개인 메세지로는 참치봇과 대화할 수 없습니다.\n [[ 참치봇 초대하기 ]](https://discordbots.org/bot/536095637368864779)", color['yellow'], message.author)
         await message.channel.send(embed=embed)
         return
 
     elif message.content.startswith(prefix+"동의"):
-        if not str(message.author.id) in userData.keys():
+        if not str(message.author.id) in userData.keys(): # 메시지 발신자가 유저 목록에 등록되어있지 않은 경우
             embed = tunabot_embed.embed_text(message, "", "", color['main'], message.author)
             embed.add_field(name="아래는 참치봇을 사용하기 위한 약관입니다", value="미숙지의 불이익은 본인에게 있습니다. 또한, Team Wonder. 는 [디스코드 TOS](https://discordapp.com/tos)도 준수합니다.", inline=False)
             embed.add_field(name="사용약관", value="Team Wonder. 의 모든 봇을 사용하는 것은 [원더봇 약관](https://wonderbot.xyz/tos) 에 동의한 것으로 간주됩니다.\n또한 다음약관은 추가됩니다.\n- 봇에서 발생하는 모든 분쟁에 팀은 책임지지 않습니다.", inline=False)
@@ -71,7 +77,7 @@ async def on_message(message):
                 today = datetime.date.today()
                 userData[str(message.author.id)] = {"money" : 0,"rank" : "","lang" : "kor","level" : 0,"point" : 0,"signDate":today.strftime("%Y-%m-%d"),"membership":"Free"}
                 with open('userData.json', 'w') as userData_file:
-                    json.dump(userData, userData_file, indent=4, sort_keys=True) 
+                    json.dump(userData, userData_file, indent=4, sort_keys=True)
                 embed = tunabot_embed.embed_text(message, ":white_check_mark: **동의**", "성공적으로 등록되었습니다.", color['main'], message.author)
                 await message.channel.send(embed=embed)
         else:
@@ -99,7 +105,7 @@ async def on_message(message):
             pcolor = color['red']
         embed = tunabot_embed.embed_text(message, f":ping_pong: **{status}**", (f"**봇 지연시간** {str(ping)}ms"), pcolor, message.author)
         await message.channel.send(embed=embed)
-                
+
     elif message.content.startswith(prefix+"백업"):
         if "Master" in userData[str(message.author.id)]['rank']:
             available = []
@@ -246,11 +252,11 @@ async def on_message(message):
         embed = tunabot_embed.embed_text(message, ":arrow_up: **리로드**", f"**{args(message)[0]}** 기능을 리로드했습니다.", color['main'], message.author)
         await message.channel.send(embed=embed)'''
 
-    
-                        
+
+
 
             #elif str(reaction.emoji) == "😕":
             #elif str(reaction.emoji) == "😡":'''
 
 
-app.run(config['token'])
+app.run(token)
