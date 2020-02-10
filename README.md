@@ -13,4 +13,4 @@ Introduce
 
 LICENCE
 --
-이 리포지토리는 MIT LICENCE을 따릅니다. 자세한 내용은 리포지토리 최상위의 LICENCE 파일을 참조하십시오.
+이 리포지토리는 MIT Licence을 따릅니다. 자세한 내용은 리포지토리 최상위의 LICENCE 파일을 참조하십시오.
